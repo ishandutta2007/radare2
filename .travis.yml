@@ -21,6 +21,14 @@ matrix:
     # Linux with GCC
     - os: linux
       env: COMPILER_NAME=gcc CXX=g++ CC=gcc CFLAGS="-DR2_ASSERT_STDOUT=1"
+    # Linux with GCC on PowerPC
+    - os: linux
+      arch: ppc64le
+      env: COMPILER_NAME=gcc CXX=g++ CC=gcc CFLAGS="-DR2_ASSERT_STDOUT=1"
+    # Linux with GCC on System Z
+    - os: linux
+      arch: s390x
+      env: COMPILER_NAME=gcc CXX=g++ CC=gcc CFLAGS="-DR2_ASSERT_STDOUT=1"     
     # Linux with clang
     - os: linux
       env: COMPILER_NAME=clang CXX=clang++ CC=clang CFLAGS="-DR2_ASSERT_STDOUT=1"
