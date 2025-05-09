@@ -1,4 +1,4 @@
-/* radare - LGPL - Copyright 2019-2022 - pancake */
+/* radare - LGPL - Copyright 2019-2025 - pancake */
 
 #include <r_core.h>
 
@@ -68,11 +68,11 @@ R_API int r_core_visual_view_zigns(RCore *core) {
 
 	while (true) {
 		__core_visual_view_zigns_update (core, &status);
-		int ch = r_cons_readchar ();
+		int ch = r_cons_readchar (core->cons);
 		if (ch == -1 || ch == 4) {
 			return true;
 		}
-		ch = r_cons_arrow_to_hjkl (ch); // get ESC+char, return 'hjkl' char
+		ch = r_cons_arrow_to_hjkl (core->cons, ch); // get ESC+char, return 'hjkl' char
 		switch (ch) {
 		case 'g':
 			r_core_cmd0 (core, "zg");
@@ -158,8 +158,8 @@ R_API int r_core_visual_view_zigns(RCore *core) {
 			{
 			char cmd[1024] = {0};
 			r_cons_show_cursor (true);
-			r_cons_set_raw (0);
-			r_line_set_prompt (":> ");
+			r_kons_set_raw (core->cons, 0);
+			r_line_set_prompt (core->cons, ":> ");
 			if (r_cons_fgets (core->cons, cmd, sizeof (cmd), 0, NULL) < 0) {
 				cmd[0] = '\0';
 			}

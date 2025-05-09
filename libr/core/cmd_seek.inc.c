@@ -487,7 +487,7 @@ static int cmd_seek(void *data, const char *input) {
 		const char *trimin = r_str_trim_head_ro (input);
 		ut64 addr = r_num_math (core->num, trimin);
 		if (core->num->nc.errors) { // TODO expose an api for this char *r_num_failed();
-			if (r_cons_singleton ()->context->is_interactive) {
+			if (core->cons->context->is_interactive) {
 				R_LOG_ERROR ("Cannot seek to unknown address '%s'", trimin);
 			}
 			break;
@@ -884,9 +884,9 @@ static int cmd_seek(void *data, const char *input) {
 			} else {
 				if (r_config_get_b (core->config, "scr.interactive")) {
 					// open shell
-					r_line_set_prompt ("sh> ");
+					r_line_set_prompt (core->cons, "sh> ");
 					for (;;) {
-						const char *line = r_line_readline ();
+						const char *line = r_line_readline (core->cons);
 						if (!line || !strcmp (line, "exit")) {
 							break;
 						}

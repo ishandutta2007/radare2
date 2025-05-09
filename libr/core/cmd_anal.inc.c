@@ -5376,7 +5376,7 @@ static void cmd_afe(RCore *core, const char *input) {
 #endif
 
 static int cmd_af(RCore *core, const char *input) {
-	r_cons_break_timeout (r_config_get_i (core->config, "anal.timeout"));
+	r_kons_break_timeout (core->cons, r_config_get_i (core->config, "anal.timeout"));
 	switch (input[1]) {
 	case '-': // "af-"
 		if (!input[2]) { // "af-"
@@ -5720,7 +5720,7 @@ static int cmd_af(RCore *core, const char *input) {
 				RAnalFunction *fcn = r_anal_get_fcn_in (core->anal, core->addr, R_ANAL_FCN_TYPE_NULL);
 				if (fcn) {
 					// TODO: add info about xrefs and call counts
-					int nargs = r_type_func_args_count (core->anal->sdb_types, 0);
+					int nargs = r_type_func_args_count (core->anal->sdb_types, fcn->name);
 					int nvars = r_anal_var_count_locals (fcn);
 					int nins = r_anal_function_instrcount (fcn);
 					int ebbs = 0;
@@ -8580,7 +8580,7 @@ static void cmd_aeg(RCore *core, int argc, char *argv[]) {
 			agraph->need_set_layout = true;
 			int update_seek = r_core_visual_graph (core, agraph, NULL, true);
 			r_cons_show_cursor (true);
-			r_cons_enable_mouse (false);
+			r_kons_enable_mouse (core->cons, false);
 			if (update_seek != -1) {
 				r_core_seek (core, oseek, false);
 			}
@@ -11970,11 +11970,11 @@ static void cmd_agraph_edge(RCore *core, const char *input) {
 R_API void cmd_agfb(RCore *core) {
 	const int c = r_config_get_b (core->config, "scr.color");
 	r_config_set_i (core->config, "scr.color", 0);
-	r_cons_push ();
+	r_kons_push (core->cons);
 	r_core_visual_graph (core, NULL, NULL, false);
 	r_config_set_i (core->config, "scr.color", c);
-	char *s = strdup (r_cons_singleton()->context->buffer);
-	r_cons_pop ();
+	char *s = strdup (core->cons->context->buffer);
+	r_kons_pop (core->cons);
 	cmd_agfb2 (core, s);
 	free (s);
 }
@@ -11982,13 +11982,13 @@ R_API void cmd_agfb(RCore *core) {
 R_API void cmd_aggb(RCore *core) {
 	const int c = r_config_get_b (core->config, "scr.color");
 	r_config_set_i (core->config, "scr.color", 0);
-	r_cons_push ();
+	r_kons_push (core->cons);
 	int ograph_zoom = r_config_get_i (core->config, "graph.zoom");
 	r_config_set_i (core->config, "graph.zoom", 1);
 	r_core_cmd_call (core, "agg");
 	r_config_set_i (core->config, "scr.color", c);
-	char *s = strdup (r_cons_singleton()->context->buffer);
-	r_cons_pop ();
+	char *s = strdup (core->cons->context->buffer);
+	r_kons_pop (core->cons);
 	cmd_agfb2 (core, s);
 	r_config_set_i (core->config, "graph.zoom", ograph_zoom);
 	free (s);
@@ -11998,8 +11998,8 @@ R_API void cmd_agfb3(RCore *core, const char *s, int x, int y) {
 	int h, w = r_str_size (s, &h);
 	RConsPixel *p = r_cons_pixel_new (w, h);
 	r_cons_pixel_sets (p, 0, 0, s);
-	r_cons_pixel_flush (p, x, y);
-	R_FREE (p);
+	r_cons_pixel_flush (core->cons, p, x, y);
+	r_cons_pixel_free (p);
 }
 
 R_API void cmd_agfb2(RCore *core, const char *s) {
@@ -12325,7 +12325,7 @@ R_API void r_core_agraph_print(RCore *core, int use_utf, const char *input) {
 			r_config_set_b (core->config, "scr.interactive", ov);
 			r_cons_show_cursor (true);
 			core->graph->is_handmade = false;
-			r_cons_enable_mouse (false);
+			r_kons_enable_mouse (core->cons, false);
 			if (update_seek != -1) {
 				r_core_seek (core, oseek, false);
 			}
@@ -12494,7 +12494,7 @@ static void r_core_graph_print(RCore *core, RGraph /*<RGraphNodeInfo>*/ *graph, 
 				int update_seek = r_core_visual_graph (core, agraph, NULL, true);
 				r_config_set_b (core->config, "scr.interactive", ov);
 				r_cons_show_cursor (true);
-				r_cons_enable_mouse (false);
+				r_kons_enable_mouse (core->cons, false);
 				if (update_seek != -1) {
 					r_core_seek (core, oseek, false);
 				}
@@ -12799,7 +12799,7 @@ static void cmd_anal_graph(RCore *core, const char *input) {
 			} else {
 				R_LOG_ERROR ("No function to graph");
 			}
-			r_cons_enable_mouse (false);
+			r_kons_enable_mouse (core->cons, false);
 			r_cons_show_cursor (true);
 		}
 			break;
@@ -14174,7 +14174,7 @@ static void cmd_aaa(RCore *core, const char *input) {
 	ut64 curseek = core->addr;
 	logline (core, 5, "Analyze all flags starting with sym. and entry0 (aa)");
 	r_cons_break_push (NULL, NULL);
-	r_cons_break_timeout (r_config_get_i (core->config, "anal.timeout"));
+	r_kons_break_timeout (core->cons, r_config_get_i (core->config, "anal.timeout"));
 	bool anal_imports = false;
 	if (r_config_get_b (core->config, "anal.imports")) {
 		logline (core, 10, "Analyze imports (af@@@i)");
@@ -15720,7 +15720,7 @@ static void cmd_ano(RCore *core, const char *input) {
 			char *f = anopath (core, fcn);
 			if (f) {
 				// r_sys_cmdf ("vim %s", f);
-				r_cons_editor (f, NULL);
+				r_cons_editor (core->cons, f, NULL);
 				free (f);
 			}
 		} else {
@@ -15778,13 +15778,13 @@ static void cmd_ano(RCore *core, const char *input) {
 					r_str_trim (s);
 					if (R_STR_ISEMPTY (s)) {
 						r_file_rm (f);
-						r_cons_editor (f, NULL);
+						r_cons_editor (core->cons, f, NULL);
 					} else {
 						r_cons_printf ("%s\n", s);
 					}
 					free (s);
 				} else {
-					r_cons_editor (f, NULL);
+					r_cons_editor (core->cons, f, NULL);
 					// r_sys_cmdf ("vim %s", f);
 				}
 				free (f);

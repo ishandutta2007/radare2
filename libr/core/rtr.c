@@ -101,13 +101,14 @@ static char *rtrcmd(TextLog T, const char *str) {
 }
 
 static void showcursor(RCore *core, int x) {
-	if (core && core->vmode) {
-		r_cons_show_cursor (x);
-		r_cons_enable_mouse (x? r_config_get_b (core->config, "scr.wheel"): false);
+	RCons *cons = core->cons;
+	if (core->vmode) {
+		r_kons_show_cursor (cons, x);
+		r_kons_enable_mouse (cons, x? r_config_get_b (core->config, "scr.wheel"): false);
 	} else {
-		r_cons_enable_mouse (false);
+		r_kons_enable_mouse (cons, false);
 	}
-	r_cons_flush ();
+	r_kons_flush (cons);
 }
 
 // TODO: rename /name to /nick or /so?
@@ -120,9 +121,9 @@ static void rtr_textlog_chat(RCore *core, TextLog T) {
 	char *ret, msg[1024] = {0};
 
 	R_LOG_INFO ("Type '/help' for commands and ^D to quit:");
-	char *oldprompt = strdup (r_line_singleton ()->prompt);
+	char *oldprompt = strdup (core->cons->line->prompt);
 	snprintf (prompt, sizeof (prompt) - 1, "[%s]> ", me);
-	r_line_set_prompt (prompt);
+	r_line_set_prompt (core->cons, prompt);
 	ret = rtrcmd (T, msg);
 	for (;;) {
 		if (lastmsg >= 0) {
@@ -154,7 +155,7 @@ static void rtr_textlog_chat(RCore *core, TextLog T) {
 			r_config_set (core->config, "cfg.user", buf+6);
 			me = r_config_get (core->config, "cfg.user");
 			snprintf (prompt, sizeof (prompt) - 1, "[%s]> ", me);
-			r_line_set_prompt (prompt);
+			r_line_set_prompt (core->cons, prompt);
 			free (m);
 		} else if (!strcmp (buf, "/log")) {
 			char *ret = rtrcmd (T, "T");
@@ -176,7 +177,7 @@ static void rtr_textlog_chat(RCore *core, TextLog T) {
 		}
 	}
 beach:
-	r_line_set_prompt (oldprompt);
+	r_line_set_prompt (core->cons, oldprompt);
 	free (oldprompt);
 }
 

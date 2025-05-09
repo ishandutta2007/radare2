@@ -1,4 +1,4 @@
-/* radare2 - LGPL - Copyright 2009-2024 - pancake */
+/* radare2 - LGPL - Copyright 2009-2025 - pancake */
 
 #include <r_bp.h>
 #include <config.h>
@@ -24,9 +24,6 @@ R_API RBreakpoint *r_bp_new(void) {
 	int i;
 	RBreakpointPlugin *static_plugin;
 	RBreakpoint *bp = R_NEW0 (RBreakpoint);
-	if (!bp) {
-		return NULL;
-	}
 	bp->bps_idx_count = 16;
 	bp->bps_idx = R_NEWS0 (RBreakpointItem*, bp->bps_idx_count);
 	bp->stepcont = R_BP_CONT_NORMAL;
@@ -162,7 +159,7 @@ static void unlinkBreakpoint(RBreakpoint *bp, RBreakpointItem *b) {
 }
 
 /* TODO: detect overlapping of breakpoints */
-static RBreakpointItem *r_bp_add(RBreakpoint *bp, R_NULLABLE const ut8 *obytes, ut64 addr, int size, int hw, int perm) {
+static RBreakpointItem *r_bp_add(RBreakpoint *bp, const ut8 * R_NULLABLE obytes, ut64 addr, int size, int hw, int perm) {
 	R_RETURN_VAL_IF_FAIL (bp, NULL);
 	if (addr == UT64_MAX || size < 1) {
 		return NULL;

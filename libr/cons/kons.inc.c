@@ -29,9 +29,9 @@ static int win_xterm_get_cur_pos(RCons *cons, int *xpos) {
 	bool is_reply;
 	do {
 		is_reply = true;
-		ch = r_cons_readchar ();
+		ch = r_cons_readchar (cons);
 		if (ch != 0x1b) {
-			while ((ch = r_cons_readchar_timeout (25))) {
+			while ((ch = r_cons_readchar_timeout (cons, 25))) {
 				if (ch < 1) {
 					return 0;
 				}
@@ -40,9 +40,9 @@ static int win_xterm_get_cur_pos(RCons *cons, int *xpos) {
 				}
 			}
 		}
-		(void)r_cons_readchar ();
+		(void)r_cons_readchar (cons);
 		for (i = 0; i < R_ARRAY_SIZE (pos) - 1; i++) {
-			ch = r_cons_readchar ();
+			ch = r_cons_readchar (cons);
 			if ((!i && !isdigit (ch)) || // dumps arrow keys etc.
 			    (i == 1 && ch == '~')) {  // dumps PgUp, PgDn etc.
 				is_reply = false;
@@ -58,7 +58,7 @@ static int win_xterm_get_cur_pos(RCons *cons, int *xpos) {
 	pos[R_ARRAY_SIZE (pos) - 1] = 0;
 	ypos = atoi (pos);
 	for (i = 0; i < R_ARRAY_SIZE (pos) - 1; i++) {
-		if ((ch = r_cons_readchar ()) == 'R') {
+		if ((ch = r_cons_readchar (cons)) == 'R') {
 			pos[i] = 0;
 			break;
 		}
@@ -224,7 +224,7 @@ static bool w32_xterm_get_size(RCons *cons) {
 #endif
 
 // XXX: if this function returns <0 in rows or cols expect MAYHEM
-R_API int r_kons_get_size(RCons *cons, R_NULLABLE int *rows) {
+R_API int r_kons_get_size(RCons *cons, int * R_NULLABLE rows) {
 	R_RETURN_VAL_IF_FAIL (cons, 0);
 #if R2__WINDOWS__
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
@@ -438,7 +438,7 @@ R_API bool r_kons_is_interactive(RCons *cons) {
 R_API void r_kons_break_push(RCons *cons, RConsBreak cb, void *user) {
 	RConsContext *ctx = cons->context;
 	if (ctx->break_stack && r_stack_size (ctx->break_stack) > 0) {
-		r_cons_break_timeout (cons->otimeout);
+		r_kons_break_timeout (cons, cons->otimeout);
 	}
 	r_cons_context_break_push (ctx, cb, user, true);
 }
@@ -692,7 +692,7 @@ static void cons_context_deinit(RConsContext *ctx) {
 }
 #endif
 
-static void init_cons_context(RCons *cons, R_NULLABLE RConsContext *parent) {
+static void init_cons_context(RCons *cons, RConsContext * R_NULLABLE parent) {
 	RConsContext *ctx = cons->context;
 	ctx->marks = r_list_newf ((RListFree)r_cons_mark_free);
 	ctx->breaked = false;
@@ -744,7 +744,6 @@ static inline void init_cons_input(InputState *state) {
 
 R_API RCons *r_kons_new(void) {
 	RCons *cons = R_NEW0 (RCons);
-	cons->refcnt++;
 #if 0
 	if (cons->refcnt != 1) {
 		return cons;
@@ -765,7 +764,6 @@ R_API RCons *r_kons_new(void) {
 	cons->lock = r_th_lock_new (false);
 	cons->use_utf8 = r_cons_is_utf8 ();
 	cons->rgbstr = r_cons_rgb_str_off;
-	cons->line = r_line_new ();
 	cons->enable_highlight = true;
 	cons->highlight = NULL;
 	cons->is_wine = -1;
@@ -821,29 +819,24 @@ R_API RCons *r_kons_new(void) {
 	r_kons_reset (cons);
 	r_kons_rgb_init (cons);
 	r_print_set_is_interrupted_cb (r_cons_is_breaked);
+	cons->line = r_line_new (cons);
 	return cons;
 }
 
-R_API void r_kons_free(R_NULLABLE RCons *cons) {
+R_API void r_kons_free(RCons * R_NULLABLE cons) {
 	if (!cons) {
 		return;
 	}
 #if R2__WINDOWS__
-	r_cons_enable_mouse (false);
+	r_kons_enable_mouse (cons, false);
 	if (cons->old_cp) {
 		(void)SetConsoleOutputCP (cons->old_cp);
 		// chcp doesn't pick up the code page switch for some reason
 		(void)r_sys_cmdf ("chcp %u > NUL", cons->old_cp);
 	}
 #endif
-#if 0
-	cons->refcnt--;
-	if (cons->refcnt != 0) {
-		return;
-	}
-#endif
 	if (cons->line) {
-		r_line_free ();
+		r_line_free (cons->line);
 		cons->line = NULL;
 	}
 	while (!r_list_empty (cons->ctx_stack)) {
@@ -973,7 +966,7 @@ R_API void r_kons_filter(RCons *cons) {
 	}
 }
 
-R_API void r_cons_context_free(R_NULLABLE RConsContext *ctx) {
+R_API void r_cons_context_free(RConsContext * R_NULLABLE ctx) {
 	if (ctx) {
 		// TODO: free more stuff
 #if 0
@@ -1633,7 +1626,7 @@ R_API void r_kons_trim(RCons *cons) {
 	}
 }
 
-R_API void r_kons_breakword(RCons *cons, R_NULLABLE const char *s) {
+R_API void r_kons_breakword(RCons *cons, const char * R_NULLABLE s) {
 	free (cons->break_word);
 	if (s) {
 		cons->break_word = strdup (s);
@@ -1704,7 +1697,7 @@ R_API bool r_kons_is_breaked(RCons *cons) {
 			if (r_time_now_mono () > cons->timeout) {
 				C->breaked = true;
 				C->was_breaked = true;
-				r_cons_break_timeout (cons->otimeout);
+				r_kons_break_timeout (cons, cons->otimeout);
 			}
 		}
 	}
@@ -1821,3 +1814,11 @@ R_API void r_kons_cmd_help(RCons *cons, RCoreHelpMessage help, bool use_color) {
 		}
 	}
 }
+
+R_API void r_kons_set_click(RCons *cons, int x, int y) {
+	cons->click_x = x;
+	cons->click_y = y;
+	cons->click_set = true;
+	cons->mouse_event = 1;
+}
+
